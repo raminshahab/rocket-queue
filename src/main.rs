@@ -1,79 +1,68 @@
-#[macro_use] extern crate rocket;
-use rocket::{State, serde::json::Json};
-use rocket_sync_db_pools::database;
+#[macro_use] 
+extern crate rocket; // This is required if you use Rocket macros like #[launch]
+#[macro_use] 
+extern crate diesel;
+
 use diesel::prelude::*;
+use rocket_sync_db_pools::database;
+use rocket::serde::json::Json;
+use diesel::PgConnection;
+
+mod schema;
+mod models;
+
+use crate::schema::users::dsl::{users, name, email};
 use crate::models::User;
-use crate::schema::users::dsl::*;
-use rocket::tokio::sync::Mutex;
-use std::sync::Arc;
-use crate::schema::users;
-use crate::models::User;
+use diesel::r2d2::{ConnectionManager, Pool};
+
+type DbPool = Pool<ConnectionManager<PgConnection>>;
+type DbConn = rocket_sync_db_pools::Connection<DbPool>;
 
 #[database("postgres_db")]
-pub struct DbConn(diesel::PgConnection);
+pub struct DbConn(Pool<ConnectionManager<PgConnection>>); // Store the pool itself
 
-
-#[get("/users/<id>")]
+#[get("/user/<id>")]
 async fn get_user(id: i32, conn: DbConn) -> Option<Json<User>> {
     use crate::schema::users::dsl::*;
     
+    // Run the query with a connection from the pool
     let user = conn.run(move |c| {
-        users.filter(id.eq(id))
-            .first::<User>(c)
-            .optional()
-    }).await.unwrap();
+        users.filter(id.eq(&id)).first::<User>(c)
+    }).await.ok();
     
     user.map(Json)
 }
 
-#[post("/users", data = "<user>")]
+#[post("/user", data = "<user>")]
 async fn create_user(user: Json<User>, conn: DbConn) -> Json<User> {
-    use crate::schema::users::dsl::*;
-    
-    let new_user = user.into_inner();
-    
     conn.run(move |c| {
         diesel::insert_into(users)
-            .values(&new_user)
+            .values(&*user)
             .get_result(c)
-            .unwrap()
-    }).await.unwrap();
-    
-    Json(new_user)
+    }).await.unwrap()
 }
 
-#[put("/users/<id>", data = "<user>")]
-async fn update_user(id: i32, user: Json<User>, conn: DbConn) -> Option<Json<User>> {
-    use crate::schema::users::dsl::*;
-    
-    let updated_user = user.into_inner();
-    
+#[put("/user/<id>", data = "<updated_user>")]
+async fn update_user(id: i32, updated_user: Json<User>, conn: DbConn) -> Option<Json<User>> {
     conn.run(move |c| {
-        diesel::update(users.filter(id.eq(id)))
-            .set((name.eq(updated_user.name), email.eq(updated_user.email)))
+        diesel::update(users.filter(id.eq(&id)))
+            .set((name.eq(&updated_user.name), email.eq(&updated_user.email)))
             .get_result(c)
-            .optional()
-    }).await.unwrap();
-    
-    updated_user.id = id;
-    Some(Json(updated_user))
+    }).await.ok()
+    .map(Json)
 }
 
-#[delete("/users/<id>")]
+#[delete("/user/<id>")]
 async fn delete_user(id: i32, conn: DbConn) -> Option<Json<String>> {
-    use crate::schema::users::dsl::*;
-    
     conn.run(move |c| {
-        diesel::delete(users.filter(id.eq(id)))
+        diesel::delete(users.filter(id.eq(&id)))
             .execute(c)
-            .unwrap()
-    }).await.unwrap();
-    
-    Some(Json(format!("User with ID {} deleted.", id)))
+    }).await.ok()
+    .map(|_| Json(format!("User with ID {} deleted.", id)))
 }
 
 #[launch]
 fn rocket() -> _ {
     rocket::build()
-        .mount("/", routes![get_user, create_user, update_user, delete_user])
+        .attach(DbConn::fairing())
 }

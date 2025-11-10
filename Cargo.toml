@@ -4,17 +4,19 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-rocket = "0.5.1"
+rocket = { version = "0.5.1", features = ["json"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-diesel = { version = "2.0", features = ["postgres", "serde_json"] }
-rocket_sync_db_pools = "0.1" 
+diesel = { version = "1.4.8", features = ["postgres", "r2d2"] }
+rocket_sync_db_pools = "0.1.0"
+dotenv = "0.15"
+tokio = { version = "1", features = ["full"] }
 
-
-# Diesel CLI (for setting up schema)
+# Diesel CLI for migrations
 [dev-dependencies]
 diesel_cli = { version = "2.0", features = ["postgres"] }
 
-# db connection string
-[global.databases]
-postgres_db = { url = "postgres://rocket_user:password@localhost/rocket_crud" }
+
+[package.metadata.rocket]
+# Adding pool size and database URL directly here in the `Cargo.toml` file
+databases = {postgres_db = { url = "postgres://rocket_user:password@localhost/rocket_crud", pool_size = 10}}
