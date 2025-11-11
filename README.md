@@ -1,6 +1,6 @@
 # Rocket Queue (Rust • Rocket • PostgreSQL)
 
-A lightweight multiplayer-ready backend built with **Rust** and **Rocket**, backend by **PostgreSQL** and **Diesel** ORM. Includes database migrations and a clean foundation for real-time or turn-based game logic. **Note this repo has not been updated in a while. Disclaimer: I am also new to Rust in case you see some indiomatic patterns Im not utilizing. As I find, I will continue to grow this from its current state** 
+A lightweight multiplayer-ready backend built with **Rust** and **Rocket**, backend by **PostgreSQL** and **Diesel** ORM. Includes database migrations and a clean foundation for real-time or turn-based game logic. **Note this repo has not been updated in a while. Disclaimer: I am also new to Rust in case you see some indiomatic patterns Im not utilizing. As I find time, I will continue to grow this from its current state thanks for your patience** 
 
 ## Tech stack
 
